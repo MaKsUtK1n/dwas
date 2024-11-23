@@ -455,7 +455,7 @@ def withdraw_callback(message, old_id):
 Заберите их по ссылке ниже!</b>"""
             keyboard = InlineKeyboardMarkup()
             keyboard.row(InlineKeyboardButton(f"Забрать {amount}$", cheque['bot_check_url']))
-            cursor.execute("UPDATE users SET balance=balance-? WHERE id=?", (amount, message.from_user.id,))
+            cursor.execute("UPDATE users SET balance=balance-?, withdrowed=withdrowed+? WHERE id=?", (amount, amount, message.from_user.id,))
             con.commit()
             bot.edit_message_text(text, message.chat.id, old_id, reply_markup=keyboard)
     except:
