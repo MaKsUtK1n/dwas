@@ -337,7 +337,7 @@ def qui(call: CallbackQuery):
     name = call.from_user.first_name
     data = get_data(call.from_user.id, username, name)
     if data[7] is None:
-        amount = randint(150, 400)
+        amount = randint(50, 250)
         TAP_COOLDOWN = randint(300, 600)
         cursor.execute("SELECT * FROM upgrades WHERE id=?", (call.from_user.id, ))
         x = False
@@ -569,7 +569,7 @@ while True:
             for d in ups:
                 if "x" in d[1]:
                     x = int(d[1].replace("x", ""))
-            amount = randint(150, 400) * x
+            amount = randint(50, 250) * x
             if data[7] is None:
                 Thread(target=deferredEarn, args=(upgr[0], None, amount)).start()
             else:
